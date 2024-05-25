@@ -1,0 +1,228 @@
+CREATE TABLE Estufa (
+    IDEstufa INT IDENTITY(1,1) PRIMARY KEY,
+    Humidade INT NOT NULL CHECK (Humidade BETWEEN 40 AND 80),
+    Temperatura INT NOT NULL CHECK (Temperatura BETWEEN 20 AND 30),
+    TipoDeCobertura NVARCHAR(100) NOT NULL,
+    Localizacao NVARCHAR(100) NOT NULL,
+    DataDeInstalacao DATE NOT NULL,
+    Irrigacao NVARCHAR(100) NOT NULL
+);
+
+CREATE TABLE Funcionarios (
+    IDFunc INT IDENTITY(1,1) PRIMARY KEY,
+    PrimeiroNome NVARCHAR(50) NOT NULL,
+    UltimoNome NVARCHAR(50) NOT NULL,
+    Telemovel CHAR(9),
+    Cargo NVARCHAR(100) NOT NULL
+);
+
+CREATE TABLE Tipo (
+    IDTipo INT IDENTITY(1,1) PRIMARY KEY,
+    Nome CHAR(5) NOT NULL
+);
+
+CREATE TABLE Produtos (
+    IDProd INT IDENTITY(1,1) PRIMARY KEY,
+    IDTipo INT NOT NULL,
+    Nome NVARCHAR(100) NOT NULL,
+    CONSTRAINT FK_Produtos_Tipo FOREIGN KEY (IDTipo) REFERENCES Tipo(IDTipo)
+);
+
+CREATE TABLE Seccao (
+    IDSeccao INT IDENTITY(1,1) PRIMARY KEY,
+    IDEstufa INT NOT NULL,
+    IDTipo INT NOT NULL,
+    HumidadeIdeal INT NOT NULL CHECK (HumidadeIdeal BETWEEN 40 AND 80),
+    TemperaturaIdeal INT NOT NULL CHECK (TemperaturaIdeal BETWEEN 20 AND 30),
+    CONSTRAINT FK_Seccao_Estufa FOREIGN KEY (IDEstufa) REFERENCES Estufa(IDEstufa),
+    CONSTRAINT FK_Seccao_Tipo FOREIGN KEY (IDTipo) REFERENCES Tipo(IDTipo)
+);
+
+CREATE TABLE Plantacao (
+    IDPlantacao INT IDENTITY(1,1) PRIMARY KEY,
+    IDSeccao INT NOT NULL,
+    IDProd INT NOT NULL,
+    IDFunc INT NOT NULL,
+    DataInicio DATE NOT NULL,
+    DataFim DATE,
+    QtdSementes INT,
+    CONSTRAINT FK_Plantacao_Seccao FOREIGN KEY (IDSeccao) REFERENCES Seccao(IDSeccao),
+    CONSTRAINT FK_Plantacao_Produto FOREIGN KEY (IDProd) REFERENCES Produtos(IDProd),
+    CONSTRAINT FK_Plantacao_Funcionario FOREIGN KEY (IDFunc) REFERENCES Funcionarios(IDFunc)
+);
+
+CREATE TABLE Colheita (
+    IDColheita INT IDENTITY(1,1) PRIMARY KEY,
+    IDPlantacao INT NOT NULL,
+    IDFunc INT NOT NULL,
+    DataColheita DATE NOT NULL,
+    Quantidade INT,
+    CONSTRAINT FK_Colheita_Plantacao FOREIGN KEY (IDPlantacao) REFERENCES Plantacao(IDPlantacao),
+    CONSTRAINT FK_Colheita_Funcionario FOREIGN KEY (IDFunc) REFERENCES Funcionarios(IDFunc)
+);
+
+
+Inserir os 3 tipos antes do trigger!
+INSERT INTO Tipo (IDTipo, Nome)
+VALUES (1, ‘AROMA’);
+VALUES (2, ‘FRUTA’);
+VALUES (3, ‘LEGUM’);
+
+Dados para inserir: 
+
+INSERT INTO Estufa (IDEstufa, Humidade, Temperatura, TipoDeCobertura, Localizacao, DataDeInstalacao, Irrigacao)
+VALUES (1, 50, 25, 'Plástico', 'São Paulo', '2024-05-25', 'Automática');
+
+
+
+TRIGGERS:
+
+Funcionários:
+
+CREATE TRIGGER trg_ValidaNumeroTelemovel
+ON Clientes
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted
+        WHERE NumeroTelemovel NOT LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+    )
+    BEGIN
+        RAISERROR ('O número de telemóvel deve ter exatamente 9 dígitos.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+
+Colheita:
+
+CREATE TRIGGER trg_QuantidadeColheita
+ON Colheita
+INSTEAD OF INSERT
+AS
+BEGIN
+    DECLARE @IDPlantacao INT;
+    DECLARE @QuantidadeNova INT;
+    DECLARE @QuantidadeTotalColhida INT;
+    DECLARE @QtdSementes INT;
+
+    -- Obter valores da nova inserção
+    SELECT @IDPlantacao = i.IDPlantacao, @QuantidadeNova = i.Quantidade
+    FROM inserted i;
+
+    -- Calcular a quantidade total já colhida para esta plantação
+    SELECT @QuantidadeTotalColhida = COALESCE(SUM(c.Quantidade), 0)
+    FROM Colheita c
+    WHERE c.IDPlantacao = @IDPlantacao;
+
+    -- Obter a quantidade de sementes plantadas para esta plantação
+    SELECT @QtdSementes = p.QtdSementes
+    FROM Plantacao p
+    WHERE p.IDPlantacao = @IDPlantacao;
+
+    -- Verificar se a nova colheita ultrapassa a quantidade de sementes plantadas
+    IF (@QuantidadeTotalColhida + @QuantidadeNova) > @QtdSementes
+    BEGIN
+        RAISERROR ('A quantidade colhida ultrapassa a quantidade de sementes plantadas.', 16, 1);
+    END
+    ELSE
+    BEGIN
+        -- Inserir a nova colheita
+        INSERT INTO Colheita (IDPlantacao, IDFunc, DataColheita, Quantidade)
+        SELECT i.IDPlantacao, i.IDFunc, i.DataColheita, i.Quantidade
+        FROM inserted i;
+    END
+END;
+
+CREATE TRIGGER trg_DataColheita
+ON Colheita
+INSTEAD OF INSERT
+AS
+BEGIN
+    DECLARE @IDPlantacao INT;
+    DECLARE @DataColheita DATE;
+    DECLARE @DataFim DATE;
+
+    -- Obter valores da nova inserção
+    SELECT @IDPlantacao = i.IDPlantacao, @DataColheita = i.DataColheita
+    FROM inserted i;
+
+    -- Obter a data de fim da plantação para esta plantação
+    SELECT @DataFim = p.DataFim
+    FROM Plantacao p
+    WHERE p.IDPlantacao = @IDPlantacao;
+
+    -- Verificar se a data da colheita ultrapassa a data de fim da plantação
+    IF @DataColheita > @DataFim
+    BEGIN
+        RAISERROR ('A data da colheita ultrapassa a data do fim da plantação.', 16, 1);
+    END
+    ELSE
+    BEGIN
+        -- Inserir a nova colheita
+        INSERT INTO Colheita (IDPlantacao, IDFunc, DataColheita, Quantidade)
+        SELECT i.IDPlantacao, i.IDFunc, i.DataColheita, i.Quantidade
+        FROM inserted i;
+    END
+END;
+
+Plantação:
+
+CREATE TRIGGER trg_ValidarDatasPlantacao
+ON Plantacao
+FOR INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Verifica se a DataFim é anterior à DataInicio
+    IF EXISTS (
+        SELECT 1
+        FROM inserted
+        WHERE DataFim IS NOT NULL AND DataFim <= DataInicio
+    )
+    BEGIN
+        -- Se a DataFim for anterior ou igual à DataInicio, retorna um erro
+        RAISERROR ('DataFim deve ser posterior à DataInicio', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+
+Tipo:
+
+CREATE TRIGGER trgNoUpdateDeleteInsertTipo
+ON dbo.Tipo
+INSTEAD OF INSERT, UPDATE, DELETE
+AS
+BEGIN
+    -- Impedir modificações
+    RAISERROR('Modificações não são permitidas na tabela Tipo.', 16, 1);
+    ROLLBACK TRANSACTION;
+END;
+
+Secção:
+
+CREATE OR ALTER TRIGGER VerificarSecao
+ON Seccao
+AFTER INSERT
+AS
+BEGIN
+    DECLARE @IDEstufa INT, @HumidadeIdeal INT, @TemperaturaIdeal INT;
+    SELECT @IDEstufa = i.IDEstufa, @HumidadeIdeal = i.HumidadeIdeal, @TemperaturaIdeal = i.TemperaturaIdeal
+    FROM inserted i;
+    
+    DECLARE @HumidadeEstufa INT, @TemperaturaEstufa INT;
+    SELECT @HumidadeEstufa = Humidade, @TemperaturaEstufa = Temperatura
+    FROM Estufa
+    WHERE IDEstufa = @IDEstufa;
+
+    IF (ABS(@HumidadeIdeal - @HumidadeEstufa) > 10 OR ABS(@TemperaturaIdeal - @TemperaturaEstufa) > 5)
+    BEGIN
+        RAISERROR ('A estufa não atende aos requisitos de humidade ou temperatura desta secção.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
