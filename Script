@@ -38,17 +38,25 @@ CREATE TABLE Seccao (
     CONSTRAINT FK_Seccao_Tipo FOREIGN KEY (IDTipo) REFERENCES Tipo(IDTipo)
 );
 
+CREATE TABLE ProdAux (
+    IDProdAux INT IDENTITY(1,1) PRIMARY KEY,
+    Nome NVARCHAR(100) NOT NULL,
+    Quantidade INT
+);
+
 CREATE TABLE Plantacao (
     IDPlantacao INT IDENTITY(1,1) PRIMARY KEY,
     IDSeccao INT NOT NULL,
     IDProd INT NOT NULL,
     IDFunc INT NOT NULL,
+    IDProdAux INT NOT NULL,
     DataInicio DATE NOT NULL,
     DataFim DATE,
     QtdSementes INT,
     CONSTRAINT FK_Plantacao_Seccao FOREIGN KEY (IDSeccao) REFERENCES Seccao(IDSeccao),
     CONSTRAINT FK_Plantacao_Produto FOREIGN KEY (IDProd) REFERENCES Produtos(IDProd),
-    CONSTRAINT FK_Plantacao_Funcionario FOREIGN KEY (IDFunc) REFERENCES Funcionarios(IDFunc)
+    CONSTRAINT FK_Plantacao_Funcionario FOREIGN KEY (IDFunc) REFERENCES Funcionarios(IDFunc),
+    CONSTRAINT FK_Plantacao_ProdAux FOREIGN KEY (IDProdAux) REFERENCES ProdAux(IDProdAux)
 );
 
 CREATE TABLE Colheita (
