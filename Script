@@ -80,7 +80,7 @@ TRIGGERS:
 Funcionários:
 
 CREATE TRIGGER trg_ValidaNumeroTelemovel
-ON Clientes
+ON Funcionarios
 AFTER INSERT, UPDATE
 AS
 BEGIN
@@ -89,7 +89,7 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM inserted
-        WHERE NumeroTelemovel NOT LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+        WHERE Telemovel NOT LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
     )
     BEGIN
         RAISERROR ('O número de telemóvel deve ter exatamente 9 dígitos.', 16, 1);
