@@ -192,6 +192,39 @@ BEGIN
 END;
 GO
 
+CREATE TRIGGER trg_LimiteProdutosPorPlantacao
+ON Plantacao
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @IDSeccao INT, @DataInicio DATE, @DataFim DATE;
+
+    -- Obter os valores da linha inserida/atualizada
+    SELECT @IDSeccao = i.IDSeccao, @DataInicio = i.DataInicio, @DataFim = COALESCE(i.DataFim, '9999-12-31')
+    FROM inserted i;
+
+    -- Verificar a quantidade de produtos diferentes na mesma secção e no mesmo período de tempo
+    IF EXISTS (
+        SELECT 1
+        FROM (
+            SELECT COUNT(DISTINCT p.IDProd) AS NumProdutos
+            FROM Plantacao p
+            WHERE p.IDSeccao = @IDSeccao
+              AND p.DataInicio <= @DataFim
+              AND COALESCE(p.DataFim, '9999-12-31') >= @DataInicio
+            GROUP BY p.IDSeccao, p.DataInicio, COALESCE(p.DataFim, '9999-12-31')
+        ) AS SubQuery
+        WHERE NumProdutos > 10
+    )
+    BEGIN
+        RAISERROR ('Não pode haver mais de 10 produtos diferentes associados à mesma plantação na mesma secção e no mesmo período de tempo.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+
 Tipo:
 
 CREATE TRIGGER trgNoUpdateDeleteInsertTipo
@@ -227,34 +260,22 @@ BEGIN
     END
 END;
 
-CREATE TRIGGER trg_LimiteProdutosPorPlantacao
-ON Plantacao
+Produtos:
+
+CREATE TRIGGER trg_ValidaNomeProduto
+ON Produtos
 AFTER INSERT, UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @IDSeccao INT, @DataInicio DATE, @DataFim DATE;
-
-    -- Obter os valores da linha inserida/atualizada
-    SELECT @IDSeccao = i.IDSeccao, @DataInicio = i.DataInicio, @DataFim = COALESCE(i.DataFim, '9999-12-31')
-    FROM inserted i;
-
-    -- Verificar a quantidade de produtos diferentes na mesma secção e no mesmo período de tempo
     IF EXISTS (
         SELECT 1
-        FROM (
-            SELECT COUNT(DISTINCT p.IDProd) AS NumProdutos
-            FROM Plantacao p
-            WHERE p.IDSeccao = @IDSeccao
-              AND p.DataInicio <= @DataFim
-              AND COALESCE(p.DataFim, '9999-12-31') >= @DataInicio
-            GROUP BY p.IDSeccao, p.DataInicio, COALESCE(p.DataFim, '9999-12-31')
-        ) AS SubQuery
-        WHERE NumProdutos > 10
+        FROM Produtos p
+        JOIN inserted i ON p.Nome = i.Nome AND p.IDProd != i.IDProd
     )
     BEGIN
-        RAISERROR ('Não pode haver mais de 10 produtos diferentes associados à mesma plantação na mesma secção e no mesmo período de tempo.', 16, 1);
+        RAISERROR ('O nome do produto já existe. Cada produto deve ter um nome único.', 16, 1);
         ROLLBACK TRANSACTION;
     END
 END;
