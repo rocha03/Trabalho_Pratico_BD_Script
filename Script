@@ -259,3 +259,54 @@ BEGIN
     END
 END;
 GO
+
+VIEWS:
+
+CREATE VIEW ProdutosColhidosMesAnterior AS
+SELECT
+    P.Nome AS Produto,
+    C.DataColheita,
+    C.Quantidade
+FROM
+    Colheita C
+JOIN
+    Plantacao PL ON C.IDPlantacao = PL.IDPlantacao
+JOIN
+    Produtos P ON PL.IDProd = P.IDProd
+WHERE
+    MONTH(C.DataColheita) = MONTH(GETDATE()) - 1
+    AND YEAR(C.DataColheita) = YEAR(GETDATE());
+
+CREATE VIEW QuantidadeSemeadaTrimestral AS
+SELECT
+    P.Nome AS Produto,
+    DATEPART(QUARTER, PL.DataInicio) AS Trimestre,
+    YEAR(PL.DataInicio) AS Ano,
+    SUM(PL.QtdSementes) AS QuantidadeSemeada
+FROM
+    Plantacao PL
+JOIN
+    Produtos P ON PL.IDProd = P.IDProd
+WHERE
+    PL.DataInicio >= DATEADD(YEAR, -1, GETDATE())
+GROUP BY
+    P.Nome,
+    DATEPART(QUARTER, PL.DataInicio),
+    YEAR(PL.DataInicio);
+
+CREATE VIEW ProdutosMaisColhidos2018 AS
+SELECT
+    P.Nome AS Produto,
+    SUM(C.Quantidade) AS QuantidadeTotal
+FROM
+    Colheita C
+JOIN
+    Plantacao PL ON C.IDPlantacao = PL.IDPlantacao
+JOIN
+    Produtos P ON PL.IDProd = P.IDProd
+WHERE
+    YEAR(C.DataColheita) = 2018
+GROUP BY
+    P.Nome
+ORDER BY
+    QuantidadeTotal DESC;
