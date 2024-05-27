@@ -99,7 +99,7 @@ END;
 
 Colheita:
 
-CREATE TRIGGER trg_QuantidadeColheita
+CREATE TRIGGER trg_QuantidadeEDataColheita
 ON Colheita
 INSTEAD OF INSERT
 AS
@@ -108,9 +108,13 @@ BEGIN
     DECLARE @QuantidadeNova INT;
     DECLARE @QuantidadeTotalColhida INT;
     DECLARE @QtdSementes INT;
+    DECLARE @DataColheita DATE;
+    DECLARE @DataFim DATE;
 
     -- Obter valores da nova inserção
-    SELECT @IDPlantacao = i.IDPlantacao, @QuantidadeNova = i.Quantidade
+    SELECT @IDPlantacao = i.IDPlantacao, 
+           @QuantidadeNova = i.Quantidade,
+           @DataColheita = i.DataColheita
     FROM inserted i;
 
     -- Calcular a quantidade total já colhida para esta plantação
@@ -119,7 +123,8 @@ BEGIN
     WHERE c.IDPlantacao = @IDPlantacao;
 
     -- Obter a quantidade de sementes plantadas para esta plantação
-    SELECT @QtdSementes = p.QtdSementes
+    SELECT @QtdSementes = p.QtdSementes,
+           @DataFim = p.DataFim
     FROM Plantacao p
     WHERE p.IDPlantacao = @IDPlantacao;
 
@@ -127,46 +132,20 @@ BEGIN
     IF (@QuantidadeTotalColhida + @QuantidadeNova) > @QtdSementes
     BEGIN
         RAISERROR ('A quantidade colhida ultrapassa a quantidade de sementes plantadas.', 16, 1);
+        RETURN;
     END
-    ELSE
-    BEGIN
-        -- Inserir a nova colheita
-        INSERT INTO Colheita (IDPlantacao, IDFunc, DataColheita, Quantidade)
-        SELECT i.IDPlantacao, i.IDFunc, i.DataColheita, i.Quantidade
-        FROM inserted i;
-    END
-END;
-
-CREATE TRIGGER trg_DataColheita
-ON Colheita
-INSTEAD OF INSERT
-AS
-BEGIN
-    DECLARE @IDPlantacao INT;
-    DECLARE @DataColheita DATE;
-    DECLARE @DataFim DATE;
-
-    -- Obter valores da nova inserção
-    SELECT @IDPlantacao = i.IDPlantacao, @DataColheita = i.DataColheita
-    FROM inserted i;
-
-    -- Obter a data de fim da plantação para esta plantação
-    SELECT @DataFim = p.DataFim
-    FROM Plantacao p
-    WHERE p.IDPlantacao = @IDPlantacao;
 
     -- Verificar se a data da colheita ultrapassa a data de fim da plantação
     IF @DataColheita > @DataFim
     BEGIN
         RAISERROR ('A data da colheita ultrapassa a data do fim da plantação.', 16, 1);
+        RETURN;
     END
-    ELSE
-    BEGIN
-        -- Inserir a nova colheita
-        INSERT INTO Colheita (IDPlantacao, IDFunc, DataColheita, Quantidade)
-        SELECT i.IDPlantacao, i.IDFunc, i.DataColheita, i.Quantidade
-        FROM inserted i;
-    END
+
+    -- Inserir a nova colheita
+    INSERT INTO Colheita (IDPlantacao, IDFunc, DataColheita, Quantidade)
+    SELECT i.IDPlantacao, i.IDFunc, i.DataColheita, i.Quantidade
+    FROM inserted i;
 END;
 
 Plantação:
