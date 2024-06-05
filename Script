@@ -217,6 +217,27 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER TRIGGER trg_VerificaTipoPlantacao
+ON Plantacao
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN Produtos p ON i.IDProd = p.IDProd
+        JOIN Tipo t ON p.IDTipo = t.IDTipo
+        WHERE t.Nome = 'AUXIL'
+    )
+    BEGIN
+        RAISERROR ('Não é permitido semear um produto do tipo AUXIL em uma plantação.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+
 Tipo:
 
 CREATE TRIGGER trgNoUpdateDeleteInsertTipo
@@ -252,6 +273,26 @@ BEGIN
     END
 END;
 
+CREATE OR ALTER TRIGGER trg_VerificaTipoSeccao
+ON Seccao
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN Tipo t ON i.IDTipo = t.IDTipo
+        WHERE t.Nome = 'AUXIL'
+    )
+    BEGIN
+        RAISERROR ('Não é permitido criar ou atualizar uma secção com o tipo AUXIL.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+
 Produtos:
 
 CREATE TRIGGER trg_ValidaNomeProduto
@@ -268,6 +309,29 @@ BEGIN
     )
     BEGIN
         RAISERROR ('O nome do produto já existe. Cada produto deve ter um nome único.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+
+ProdAux:
+
+CREATE OR ALTER TRIGGER trg_VerificaTipoProdAux
+ON ProdAux
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN Produtos p ON i.IDProd = p.IDProd
+        JOIN Tipo t ON p.IDTipo = t.IDTipo
+        WHERE t.Nome <> 'AUXIL'
+    )
+    BEGIN
+        RAISERROR ('Somente produtos do tipo AUXIL podem ser inseridos na tabela ProdAux.', 16, 1);
         ROLLBACK TRANSACTION;
     END
 END;
