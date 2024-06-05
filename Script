@@ -72,23 +72,23 @@ CREATE TABLE ProdAux (
 );
 
 
-Inserir os 4 tipos antes do trigger!
+-- Inserir os 4 tipos antes do trigger!
 INSERT INTO Tipo (IDTipo, Nome)
 VALUES (1, ‘AROMA’);
 VALUES (2, ‘FRUTA’);
 VALUES (3, ‘LEGUM’);
 VALUES (4, ‘AUXIL’);
 
-Dados para inserir: 
+-- Dados para inserir: 
 
 INSERT INTO Estufa (IDEstufa, Humidade, Temperatura, TipoDeCobertura, Localizacao, DataDeInstalacao, Irrigacao)
 VALUES (1, 50, 25, 'Plástico', 'São Paulo', '2024-05-25', 'Automática');
 
 
 
-TRIGGERS:
+-- TRIGGERS:
 
-Funcionários:
+-- Funcionários:
 
 CREATE TRIGGER trg_ValidaNumeroTelemovel
 ON Funcionarios
@@ -108,7 +108,7 @@ BEGIN
     END
 END;
 
-Colheita:
+-- Colheita:
 
 CREATE TRIGGER trg_QuantidadeEDataColheita
 ON Colheita
@@ -120,6 +120,7 @@ BEGIN
     DECLARE @QuantidadeTotalColhida INT;
     DECLARE @QtdSementes INT;
     DECLARE @DataColheita DATE;
+    DECLARE @DataInicio DATE;
     DECLARE @DataFim DATE;
 
     -- Obter valores da nova inserção
@@ -133,8 +134,9 @@ BEGIN
     FROM Colheita c
     WHERE c.IDPlantacao = @IDPlantacao;
 
-    -- Obter a quantidade de sementes plantadas para esta plantação
+    -- Obter a quantidade de sementes plantadas e datas para esta plantação
     SELECT @QtdSementes = p.QtdSementes,
+           @DataInicio = p.DataInicio,
            @DataFim = p.DataFim
     FROM Plantacao p
     WHERE p.IDPlantacao = @IDPlantacao;
@@ -153,13 +155,20 @@ BEGIN
         RETURN;
     END
 
+    -- Verificar se a data da colheita é anterior à data de início da plantação
+    IF @DataColheita < @DataInicio
+    BEGIN
+        RAISERROR ('A data da colheita não pode ser anterior à data de início da plantação.', 16, 1);
+        RETURN;
+    END
+
     -- Inserir a nova colheita
     INSERT INTO Colheita (IDPlantacao, IDFunc, DataColheita, Quantidade)
     SELECT i.IDPlantacao, i.IDFunc, i.DataColheita, i.Quantidade
     FROM inserted i;
 END;
 
-Plantação:
+-- Plantação:
 
 CREATE TRIGGER trg_ValidarDatasPlantacao
 ON Plantacao
@@ -236,7 +245,7 @@ BEGIN
 END;
 GO
 
-Tipo:
+-- Tipo:
 
 CREATE TRIGGER trgNoUpdateDeleteInsertTipo
 ON dbo.Tipo
@@ -248,7 +257,7 @@ BEGIN
     ROLLBACK TRANSACTION;
 END;
 
-Secção:
+-- Secção:
 
 CREATE OR ALTER TRIGGER VerificarSecao
 ON Seccao
@@ -291,7 +300,7 @@ BEGIN
 END;
 GO
 
-Produtos:
+-- Produtos:
 
 CREATE TRIGGER trg_ValidaNomeProduto
 ON Produtos
@@ -312,7 +321,7 @@ BEGIN
 END;
 GO
 
-ProdAux:
+-- ProdAux:
 
 CREATE OR ALTER TRIGGER trg_VerificaTipoProdAux
 ON ProdAux
@@ -335,7 +344,7 @@ BEGIN
 END;
 GO
 
-VIEWS:
+-- VIEWS:
 
 CREATE VIEW ProdutosColhidosMesAnterior AS
 SELECT
