@@ -38,12 +38,6 @@ CREATE TABLE Seccao (
     CONSTRAINT FK_Seccao_Tipo FOREIGN KEY (IDTipo) REFERENCES Tipo(IDTipo)
 );
 
-CREATE TABLE ProdAux (
-    IDProdAux INT IDENTITY(1,1) PRIMARY KEY,
-    Nome NVARCHAR(100) NOT NULL,
-    Quantidade INT
-);
-
 CREATE TABLE Plantacao (
     IDPlantacao INT IDENTITY(1,1) PRIMARY KEY,
     IDSeccao INT NOT NULL,
@@ -69,12 +63,23 @@ CREATE TABLE Colheita (
     CONSTRAINT FK_Colheita_Funcionario FOREIGN KEY (IDFunc) REFERENCES Funcionarios(IDFunc)
 );
 
+CREATE TABLE ProdAux (
+    IDProd INT NOT NULL,
+    IDPlantacao INT NOT NULL,
+    Quantidade INT NOT NULL,
+    Data DATE NOT NULL,
+    PRIMARY KEY (IDProd, IDPlantacao),
+    CONSTRAINT FK_ProdAux_Produto FOREIGN KEY (IDProd) REFERENCES Produtos(IDProd),
+    CONSTRAINT FK_ProdAux_Plantacao FOREIGN KEY (IDPlantacao) REFERENCES Plantacao(IDPlantacao)
+);
 
-Inserir os 3 tipos antes do trigger!
+
+Inserir os 4 tipos antes do trigger!
 INSERT INTO Tipo (IDTipo, Nome)
 VALUES (1, ‘AROMA’);
 VALUES (2, ‘FRUTA’);
 VALUES (3, ‘LEGUM’);
+VALUES (4, ‘AUXIL’);
 
 Dados para inserir: 
 
