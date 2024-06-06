@@ -394,3 +394,46 @@ GROUP BY
     P.Nome
 ORDER BY
     QuantidadeTotal DESC;
+
+CREATE VIEW ProdutosNaoColhidosUltimoAno AS
+SELECT
+    P.Nome AS Produto,
+    SUM(PL.QtdSementes) - COALESCE(SUM(C.Quantidade), 0) AS QuantidadeNaoColhida
+FROM
+    Plantacao PL
+JOIN
+    Produtos P ON PL.IDProd = P.IDProd
+LEFT JOIN
+    Colheita C ON PL.IDPlantacao = C.IDPlantacao
+WHERE
+    PL.DataInicio >= DATEADD(YEAR, -1, GETDATE())
+GROUP BY
+    P.Nome
+HAVING
+    SUM(PL.QtdSementes) > COALESCE(SUM(C.Quantidade), 0);
+
+CREATE VIEW PlantacoesAtivas AS
+SELECT
+    PL.IDPlantacao,
+    P.Nome AS Produto,
+    PL.DataInicio,
+    PL.DataFim
+FROM
+    Plantacao PL
+JOIN
+    Produtos P ON PL.IDProd = P.IDProd
+WHERE
+    PL.DataFim IS NULL OR PL.DataFim >= GETDATE();
+
+CREATE VIEW ProdutosSemeadosMaisPopulares AS
+SELECT TOP 5
+    P.Nome AS Produto,
+    COUNT(PL.IDProd) AS NumeroDeSemeadas
+FROM
+    Plantacao PL
+JOIN
+    Produtos P ON PL.IDProd = P.IDProd
+GROUP BY
+    P.Nome
+ORDER BY
+    NumeroDeSemeadas DESC;
